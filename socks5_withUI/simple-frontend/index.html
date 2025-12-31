@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOCKS5 协议分析工具</title>
+  <style>
+    /* 全局样式 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    #app {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* 标题样式 */
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .header .subtitle {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .header .tips {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    /* 卡片容器 */
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    /* 卡片样式 */
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 20px;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    /* 表单样式 */
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #555;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    /* 按钮样式 */
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+
+    .btn-success {
+      background: #48bb78;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #38a169;
+    }
+
+    .btn-danger {
+      background: #f56565;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #e53e3e;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* 终端样式 */
+    .terminal {
+      background: #1a1a1a;
+      color: #00ff00;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      height: 400px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+    .terminal-line {
+      margin: 2px 0;
+    }
+
+    .terminal-line.error {
+      color: #ff6b6b;
+    }
+
+    .terminal-line.success {
+      color: #51cf66;
+    }
+
+    .terminal-line.info {
+      color: #74c0fc;
+    }
+
+    .terminal-line.warning {
+      color: #ffd43b;
+    }
+
+    /* 协议步骤样式 */
+    .protocol-steps {
+      list-style: none;
+      padding: 0;
+    }
+
+    .protocol-step {
+      padding: 15px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border-left: 4px solid #ddd;
+      background: #f7f7f7;
+      transition: all 0.3s;
+    }
+
+    .protocol-step.active {
+      border-left-color: #667eea;
+      background: #eef2ff;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+    }
+
+    .protocol-step.completed {
+      border-left-color: #48bb78;
+      background: #f0fff4;
+    }
+
+    .protocol-step.failed {
+      border-left-color: #f56565;
+      background: #fff5f5;
+    }
+
+    .protocol-step h3 {
+      font-size: 16px;
+      margin-bottom: 8px;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .protocol-step p {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    /* 数据包样式 */
+    .packet {
+      background: white;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 10px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .packet-header {
+      font-weight: bold;
+      color: #667eea;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .packet-data {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      word-break: break-all;
+      line-height: 1.8;
+    }
+
+    .packet-fields {
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    .packet-field {
+      display: flex;
+      padding: 4px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .packet-field:last-child {
+      border-bottom: none;
+    }
+
+    .field-offset {
+      width: 80px;
+      color: #999;
+      font-family: 'Courier New', monospace;
+    }
+
+    .field-name {
+      width: 120px;
+      color: #667eea;
+      font-weight: bold;
+    }
+
+    .field-value {
+      color: #333;
+      font-family: 'Courier New', monospace;
+    }
+
+    .field-desc {
+      color: #666;
+      margin-left: 10px;
+    }
+
+    /* Wireshark提示 */
+    .wireshark-tip {
+      background: #e3f2fd;
+      border: 1px solid #2196f3;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+
+    .wireshark-tip h3 {
+      color: #1976d2;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .wireshark-tip ol {
+      margin-left: 20px;
+      color: #555;
+      line-height: 1.8;
+    }
+
+    .wireshark-tip li {
+      margin: 5px 0;
+    }
+
+    .wireshark-tip code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      color: #c7254e;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 页面头部 -->
+    <div class="header">
+      <h1>🔍 SOCKS5 协议分析工具</h1>
+      <p class="subtitle">实时监控SOCKS5协议实现过程 | 配合Wireshark抓包分析</p>
+      <div class="tips">
+        💡 提示：启动SOCKS5服务器后，使用本工具触发连接，同时在Wireshark中抓包查看详细数据
+      </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="container">
+      <!-- 左侧：连接配置和测试 -->
+      <div class="card">
+        <h2>⚙️ 连接配置</h2>
+
+        <!-- SOCKS5服务器配置 -->
+        <div class="form-group">
+          <label>SOCKS5 服务器地址：</label>
+          <input type="text" v-model="config.host" placeholder="例如: 127.0.0.1">
+        </div>
+
+        <div class="form-group">
+          <label>端口：</label>
+          <input type="number" v-model.number="config.port" placeholder="例如: 1080">
+        </div>
+
+        <div class="form-group">
+          <label>用户名：</label>
+          <input type="text" v-model="config.username" placeholder="例如: testuser">
+        </div>
+
+        <div class="form-group">
+          <label>密码：</label>
+          <input type="password" v-model="config.password" placeholder="例如: testpass">
+        </div>
+
+        <div class="form-group">
+          <label>目标地址：</label>
+          <input type="text" v-model="config.target" placeholder="例如: www.example.com">
+        </div>
+
+        <div class="form-group">
+          <label>目标端口：</label>
+          <input type="number" v-model.number="config.targetPort" placeholder="例如: 80">
+        </div>
+
+        <div style="margin-top: 20px;">
+          <button class="btn btn-primary" @click="startTest" :disabled="testing">
+            {{ testing ? '测试中...' : '🚀 开始测试连接' }}
+          </button>
+          <button class="btn btn-danger" @click="clearTerminal" style="margin-left: 10px;">
+            🗑️ 清空日志
+          </button>
+        </div>
+
+        <!-- 终端输出 -->
+        <div class="terminal" ref="terminal" style="margin-top: 20px;">
+          <div
+            v-for="(line, index) in terminalLines"
+            :key="index"
+            class="terminal-line"
+            :class="line.type"
+          >
+            <span v-if="line.timestamp">[{{ line.timestamp }}]</span> {{ line.text }}
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：协议过程 -->
+      <div class="card">
+        <h2>📋 SOCKS5 协议过程</h2>
+
+        <ul class="protocol-steps">
+          <!-- 步骤1：握手 -->
+          <li
+            class="protocol-step"
+            :class="getStepClass(0)"
+          >
+            <h3>步骤 1: 握手 (Handshake)</h3>
+            <p>客户端向服务器发送支持的认证方法列表，服务器选择并响应认证方式。</p>
+
+            <div v-if="currentStep >= 0" class="packet">
+              <div class="packet-header">📤 客户端 → 服务器：握手请求</div>
+              <div class="packet-data">05 02 00 02</div>
+              <div class="packet-fields">
+                <div class="packet-field">
+                  <span class="field-offset">0</span>
+                  <span class="field-name">VER</span>
+                  <span class="field-value">0x05</span>
+                  <span class="field-desc">SOCKS5版本号</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">1</span>
+                  <span class="field-name">NMETHODS</span>
+                  <span class="field-value">0x02</span>
+                  <span class="field-desc">支持的认证方法数量</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">2</span>
+                  <span class="field-name">METHODS[0]</span>
+                  <span class="field-value">0x00</span>
+                  <span class="field-desc">无需认证</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">3</span>
+                  <span class="field-name">METHODS[1]</span>
+                  <span class="field-value">0x02</span>
+                  <span class="field-desc">用户名/密码认证</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="currentStep >= 0 && !steps[0].failed" class="packet" style="margin-top: 8px;">
+              <div class="packet-header">📥 服务器 → 客户端：方法选择</div>
+              <div class="packet-data">05 02</div>
+              <div class="packet-fields">
+                <div class="packet-field">
+                  <span class="field-offset">0</span>
+                  <span class="field-name">VER</span>
+                  <span class="field-value">0x05</span>
+                  <span class="field-desc">SOCKS5版本号</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">1</span>
+                  <span class="field-name">METHOD</span>
+                  <span class="field-value">0x02</span>
+                  <span class="field-desc">选择用户名/密码认证</span>
+                </div>
+              </div>
+            </div>
+          </li>
+
+          <!-- 步骤2：认证 -->
+          <li
+            class="protocol-step"
+            :class="getStepClass(1)"
+          >
+            <h3>步骤 2: 认证 (Authentication)</h3>
+            <p>客户端发送用户名和密码进行身份验证，服务器返回认证结果。</p>
+
+            <div v-if="currentStep >= 1" class="packet">
+              <div class="packet-header">📤 客户端 → 服务器：用户名密码</div>
+              <div class="packet-data">{{ formatAuthPacket() }}</div>
+              <div class="packet-fields">
+                <div class="packet-field">
+                  <span class="field-offset">0</span>
+                  <span class="field-name">VERSION</span>
+                  <span class="field-value">0x01</span>
+                  <span class="field-desc">认证子协商版本</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">1</span>
+                  <span class="field-name">ULEN</span>
+                  <span class="field-value">0x{{ config.username.length.toString(16).toUpperCase() }}</span>
+                  <span class="field-desc">用户名长度</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">2</span>
+                  <span class="field-name">UNAME</span>
+                  <span class="field-value">{{ config.username }}</span>
+                  <span class="field-desc">用户名</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">2+ULEN</span>
+                  <span class="field-name">PLEN</span>
+                  <span class="field-value">0x{{ config.password.length.toString(16).toUpperCase() }}</span>
+                  <span class="field-desc">密码长度</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">3+ULEN</span>
+                  <span class="field-name">PASSWD</span>
+                  <span class="field-value">******</span>
+                  <span class="field-desc">密码</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="currentStep >= 1 && !steps[1].failed" class="packet" style="margin-top: 8px;">
+              <div class="packet-header">📥 服务器 → 客户端：认证结果</div>
+              <div class="packet-data">01 00</div>
+              <div class="packet-fields">
+                <div class="packet-field">
+                  <span class="field-offset">0</span>
+                  <span class="field-name">VERSION</span>
+                  <span class="field-value">0x01</span>
+                  <span class="field-desc">认证子协商版本</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">1</span>
+                  <span class="field-name">STATUS</span>
+                  <span class="field-value">0x00</span>
+                  <span class="field-desc">认证成功</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="currentStep >= 1 && steps[1].failed" class="packet" style="margin-top: 8px; background: #ffebee;">
+              <div class="packet-header" style="color: #f56565;">❌ 认证失败</div>
+              <div class="packet-data">01 01</div>
+              <div class="packet-fields">
+                <div class="packet-field">
+                  <span class="field-offset">1</span>
+                  <span class="field-name">STATUS</span>
+                  <span class="field-value">0x01</span>
+                  <span class="field-desc">认证失败（用户名或密码错误）</span>
+                </div>
+              </div>
+            </div>
+          </li>
+
+          <!-- 步骤3：请求 -->
+          <li
+            class="protocol-step"
+            :class="getStepClass(2)"
+          >
+            <h3>步骤 3: 连接请求 (Request)</h3>
+            <p>客户端发送CONNECT命令，请求连接到目标服务器。</p>
+
+            <div v-if="currentStep >= 2" class="packet">
+              <div class="packet-header">📤 客户端 → 服务器：CONNECT请求</div>
+              <div class="packet-data">{{ formatRequestPacket() }}</div>
+              <div class="packet-fields">
+                <div class="packet-field">
+                  <span class="field-offset">0</span>
+                  <span class="field-name">VER</span>
+                  <span class="field-value">0x05</span>
+                  <span class="field-desc">SOCKS5版本</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">1</span>
+                  <span class="field-name">CMD</span>
+                  <span class="field-value">0x01</span>
+                  <span class="field-desc">CONNECT命令</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">2</span>
+                  <span class="field-name">RSV</span>
+                  <span class="field-value">0x00</span>
+                  <span class="field-desc">保留字段</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">3</span>
+                  <span class="field-name">ATYP</span>
+                  <span class="field-value">0x03</span>
+                  <span class="field-desc">域名类型</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">4</span>
+                  <span class="field-name">LEN</span>
+                  <span class="field-value">0x{{ config.target.length.toString(16).toUpperCase() }}</span>
+                  <span class="field-desc">域名长度</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">5</span>
+                  <span class="field-name">DST.ADDR</span>
+                  <span class="field-value">{{ config.target }}</span>
+                  <span class="field-desc">目标域名</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">5+LEN</span>
+                  <span class="field-name">DST.PORT</span>
+                  <span class="field-value">0x{{ config.targetPort.toString(16).toUpperCase() }}</span>
+                  <span class="field-desc">目标端口</span>
+                </div>
+              </div>
+            </div>
+          </li>
+
+          <!-- 步骤4：响应 -->
+          <li
+            class="protocol-step"
+            :class="getStepClass(3)"
+          >
+            <h3>步骤 4: 连接响应 (Response)</h3>
+            <p>服务器返回连接结果，成功后开始双向转发数据。</p>
+
+            <div v-if="currentStep >= 3 && testSuccess" class="packet">
+              <div class="packet-header">✅ 服务器 → 客户端：连接成功</div>
+              <div class="packet-data">05 00 00 01 7F 00 00 01 1F 90</div>
+              <div class="packet-fields">
+                <div class="packet-field">
+                  <span class="field-offset">0</span>
+                  <span class="field-name">VER</span>
+                  <span class="field-value">0x05</span>
+                  <span class="field-desc">SOCKS5版本</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">1</span>
+                  <span class="field-name">REP</span>
+                  <span class="field-value">0x00</span>
+                  <span class="field-desc">成功</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">3</span>
+                  <span class="field-name">ATYP</span>
+                  <span class="field-value">0x01</span>
+                  <span class="field-desc">IPv4地址</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">4-7</span>
+                  <span class="field-name">BND.ADDR</span>
+                  <span class="field-value">127.0.0.1</span>
+                  <span class="field-desc">绑定地址</span>
+                </div>
+                <div class="packet-field">
+                  <span class="field-offset">8-9</span>
+                  <span class="field-name">BND.PORT</span>
+                  <span class="field-value">8080</span>
+                  <span class="field-desc">绑定端口</span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="currentStep >= 3 && !testSuccess" class="packet" style="background: #ffebee;">
+              <div class="packet-header" style="color: #f56565;">❌ 连接失败</div>
+              <div class="packet-data">05 05 00 01 00 00 00 00 00 00</div>
+              <div class="packet-fields">
+                <div class="packet-field">
+                  <span class="field-offset">1</span>
+                  <span class="field-name">REP</span>
+                  <span class="field-value">0x05</span>
+                  <span class="field-desc">连接被拒绝</span>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Wireshark使用说明 -->
+    <div class="wireshark-tip">
+      <h3>🔧 Wireshark抓包分析指南</h3>
+      <ol>
+        <li>下载并安装 <strong>Wireshark</strong>: <a href="https://www.wireshark.org/download.html" target="_blank" style="color: #2196f3;">https://www.wireshark.org/</a></li>
+        <li>启动Wireshark，选择网络接口（建议选择正在使用的网卡或Loopback接口）</li>
+        <li>设置抓包过滤器：<code>tcp.port == 1080</code>（假设SOCKS5服务器监听1080端口）</li>
+        <li>点击"开始抓包"（蓝色鲨鱼鳍图标）</li>
+        <li>在本页面点击"开始测试连接"按钮，触发SOCKS5连接</li>
+        <li>在Wireshark中查看抓到的数据包，会看到完整的SOCKS5协议交互过程</li>
+        <li>右键点击数据包 → "Follow" → "TCP Stream" 查看完整的TCP对话</li>
+        <li>对比Wireshark抓到的实际数据包和本页面显示的理论数据包，加深理解</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- 引入Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <!-- 主应用代码 -->
+  <script src="./app.js"></script>
+</body>
+</html>
